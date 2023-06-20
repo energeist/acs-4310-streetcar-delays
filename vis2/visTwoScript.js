@@ -124,16 +124,25 @@ async function handleData() {
           return 'translate(' + pos + ')';
       })
       .style('text-anchor', function(d) {
-          var midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
-          return (midangle < Math.PI ? 'start' : 'end')
+          const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+          return (midangle < Math.PI ? 'start' : 'end');
       })
-      
+
   // Title text
   svg
     .append('text')
     .attr('class', 'chart-title')
     .attr('text-anchor', 'middle')
-    .text('Delay sources on TTC streetcar line #501')
+    .text('Delay sources on TTC streetcar')
+      .attr('font-family', 'helvetica')
+  
+  // Split this way because I'm lazy and it's actually much more simple
+  svg
+    .append('text')
+    .attr('class', 'chart-title')
+    .attr('text-anchor', 'middle')
+    .attr('dy', 20)
+    .text('line #501 by number of occurrences')
       .attr('font-family', 'helvetica')
 }
 
