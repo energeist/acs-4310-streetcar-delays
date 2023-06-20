@@ -107,7 +107,7 @@ async function handleData() {
         const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2 // Angle position to determine if label goes to left or right
         posC[0] = radius * 0.95 * (midangle < Math.PI ? 1 : -1); // multiply by 1 or -1 to put it on the right or on the left
         return [posA, posB, posC]
-      })
+      });
 
   // Label text
   svg
@@ -126,7 +126,7 @@ async function handleData() {
       .style('text-anchor', function(d) {
           const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2;
           return (midangle < Math.PI ? 'start' : 'end');
-      })
+      });
 
   // Title text
   svg
@@ -134,7 +134,7 @@ async function handleData() {
     .attr('class', 'chart-title')
     .attr('text-anchor', 'middle')
     .text('Delay sources on TTC streetcar')
-      .attr('font-family', 'helvetica')
+      .attr('font-family', 'helvetica');
   
   // Split this way because I'm lazy and it's actually much more simple
   svg
@@ -143,7 +143,7 @@ async function handleData() {
     .attr('text-anchor', 'middle')
     .attr('dy', 20)
     .text('line #501 by number of occurrences')
-      .attr('font-family', 'helvetica')
+      .attr('font-family', 'helvetica');
 }
 
-handleData()
+handleData();

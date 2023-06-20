@@ -1,140 +1,140 @@
-// visTwoScript.js
+// visThreeScript.js
 async function handleData() {
   let data = await d3.csv('../ttc-streetcar-delay-data-2022.csv');
   console.log(data);
 
-  // Question 2: What is the distribution of the reasons for delays on the 501 line?
+  // Question 3: Can we see any seasonality in delay times for top incident types?
 
   // filter values only for the 501 line and any null values for incident
-  data = data.filter((row) => row.line === '501' && row.incident);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const incidents = [
+    'Operations',
+    'Mechanical',
+    'Security',
+    'Emergency Services',
+    'Cleaning - Unsanitary',
+    'Collision - TTC Involved'
+  ];
+
+  data = data.filter((row) => row.line === '501' && row.incident && row.date);
   console.log(data);
 
-  const totalIncidents = data.length // already filtered for what we want + non-null
+  const totalIncidents = data.length; // already filtered for what we want + non-null
 
-  const collectedData = data.reduce((obj, row) => {
-    if (obj[row.incident] === undefined) {
-      console.log(`new entry for ${row.incident}`);
-      obj[row.incident] = 1;
-    } else {
-      obj[row.incident] += 1;
-    }
-    return obj;
-  }, {});
-
-  console.log(collectedData);
-
-  let dataArray = [];
-
-  Object.keys(collectedData).forEach((entry) => {
-    console.log(entry);
-    dataArray.push({ incident: entry, occurrences: collectedData[entry] });
+  const dataByIncident = [];
+  incidents.map(type => {
+    dataByIncident[type] = data.filter(row => row.incident === type);
   });
 
-  dataArray.sort((a, b) => b.occurrences - a.occurrences);
+  console.log("dataByIncident");
+  console.log(dataByIncident);
 
-  // combine all the smaller sources of delays
+  let month = "";
 
-  let sum = 0
-  dataArray.forEach((item, index) => {
-    if (index > 9) { 
-      sum += item.occurrences
-    }
-  })
+  // Split the data down into a monthly breakdown of each 
+  
+  const monthlyOccurrences = {};
 
-  dataArray = dataArray.slice(0,10)
-  dataArray.push({incident: "Other Source", occurrences: sum})
+  incidents.forEach((type) => {
+    dataByIncident[type].forEach((row) => {
+      const month = row.date.split("-")[1];
 
-  console.log(dataArray);
+      if (!monthlyOccurrences[type]) {
+        monthlyOccurrences[type] = {};
+      }
+
+      if (!monthlyOccurrences[type][month]) {
+        monthlyOccurrences[type][month] = 1;
+      } else {
+        monthlyOccurrences[type][month] += 1;
+      }
+    });
+  });
+
+  console.log(monthlyOccurrences);
 
   // d3 stuff here:
   const margin = 100;
-  const width = 1100;
-  const height = 800;
-  const radius = Math.min(width, height) / 2 - margin;
+  const width = 800;
+  const height = 600;
 
   // SCALES
 
   // colour scale
-  const colourScale = d3.scaleSequential().domain([0, dataArray.length]).interpolator(d3.interpolateRainbow);
+  const colourScale = d3.scaleSequential()
+    .domain([0, incidents.length - 1])
+    .interpolator(d3.interpolateRainbow);
 
-  // PIE STUFF
+  // x scale
+  const xScale = d3.scaleLinear()
+    .domain([0, months.length - 1])
+    .range([margin, width - margin]);
+  
+  console.log("monthylthing");
+  console.log(monthlyOccurrences[incidents[0]]);
 
-  // Compute position of each group on pie
-  const pie = d3.pie().value((d) => d.occurrences).startAngle(-Math.PI / 6);
+  // y scale
+  const operationsData = Object.entries(monthlyOccurrences[incidents[0]])
+    .map(([month, value]) => ({ month, value: parseInt(value) }));
+  console.log("operationsData")
+  console.log(operationsData)
 
-  const pieData = pie(dataArray);
+  let operationsYScale = d3.scaleLinear()
+    .domain([0, d3.max(operationsData, d => d.value)])
+    .range([height - margin, margin]);
 
-  // ARC GENERATOR
-  const arc = d3.arc().innerRadius(radius * 0.5).outerRadius(radius * 0.8);
-
-  // Secondary arc for label positioning
-  const outerArc = d3.arc().innerRadius(radius * 0.9).outerRadius(radius * 0.9);
+  // monthsScale
+  const monthsScale = d3.scaleTime()
+    .domain([new Date('2022-01-01'), new Date('2022-12-01')])
+    .range([margin, width-margin]);
 
   // DRAWING STUFF
-
   const svg = d3
     .select('#svg')
     .attr('width', width + margin)
-    .attr('height', height + margin)
+    .attr('height', height + margin);
+
+  const graph = svg
     .append('g')
-    .attr('transform', `translate(${width / 2}, ${height / 2})`);
 
-  // Drawing the donut chart
+  // AXES
+  // Define the axis generators
+  const bottomAxis = d3.axisBottom(xScale)
+    .ticks(months.length)
+    .tickFormat(d => months[d]);
+
+  const leftAxis = d3.axisLeft(operationsYScale);
+
+  // Create the bottom axis
   svg
-    .selectAll('allSlices')
-    .data(pieData)
-    .enter()
+    .append('g')
+    .attr('transform', `translate(0, ${height - margin})`)
+    .call(bottomAxis);
+  // Create the left axis
+  svg
+    .append('g')
+    .attr('transform', `translate(${margin}, 0)`)
+    .call(leftAxis);
+
+  // PATH FOR AREA
+
+  // area generator
+  const areagen = d3.area()
+    .x((d, i) => xScale(i))
+    .y0(d => height - margin)
+    .y1(d => operationsYScale(d.value))
+    .curve(d3.curveBasis);
+
+  // Draw the graph
+
+  graph
     .append('path')
-    .attr('d', arc)
-    .attr('fill', (d) => colourScale(d.index))
-    .attr('stroke', 'white')
-    .style('stroke-width', '2px')
-    .style('opacity', 0.7);
+    .attr('d', areagen(operationsData))
+    .attr('stroke-width', 1)
+    .attr('stroke', 'cornflowerblue')
+    .attr('fill', 'cornflowerblue')
+    .attr('opacity', 0.4);
+};
 
-  // Drawing the polylines for labelling
-  svg
-    .selectAll('allPolylines')
-    .data(pieData)
-    .enter()
-    .append('polyline')
-      .attr("stroke", "black")
-      .style("fill", "none")
-      .attr("stroke-width", 1)
-      .attr('points', d => {
-        const posA = arc.centroid(d); // line insertion in the slice
-        const posB = outerArc.centroid(d); 
-        const posC = outerArc.centroid(d); 
-        const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2 // Angle position to determine if label goes to left or right
-        posC[0] = radius * 0.95 * (midangle < Math.PI ? 1 : -1); // multiply by 1 or -1 to put it on the right or on the left
-        return [posA, posB, posC]
-      })
-
-  // Label text
-  svg
-    .selectAll('allLabels')
-    .data(pieData)
-    .enter()
-    .append('text')
-      .text(d => `${d.data.incident} - ${(d.data.occurrences / totalIncidents * 100).toFixed(2)}%`)
-      .attr('font-family', 'helvetica')
-      .attr('transform', d => {
-          const pos = outerArc.centroid(d);
-          const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2
-          pos[0] = radius * 0.99 * (midangle < Math.PI ? 1 : -1);
-          return 'translate(' + pos + ')';
-      })
-      .style('text-anchor', function(d) {
-          const midangle = d.startAngle + (d.endAngle - d.startAngle) / 2;
-          return (midangle < Math.PI ? 'start' : 'end');
-      })
-
-  // Title text
-  svg
-    .append('text')
-    .attr('class', 'chart-title')
-    .attr('text-anchor', 'middle')
-    .text('Delay sources on TTC streetcar line #501')
-      .attr('font-family', 'helvetica')
-}
-
-handleData()
+handleData();
